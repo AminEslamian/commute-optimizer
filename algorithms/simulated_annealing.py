@@ -2,7 +2,8 @@
 algorithms/simulated_annealing.py
 Stochastic optimization governed by a temperature schedule.
 """
-
+import random
+import math
 from typing import Tuple
 from algorithms.base import LocalSearchSolver
 from core.state import State
@@ -32,5 +33,43 @@ class SimulatedAnnealingSolver(LocalSearchSolver):
         Prohibited:
         - Ignoring the temperature parameter or turning this into pure hill climbing.
         """
-        # TODO: Implement Simulated Annealing
-        raise NotImplementedError("Implement solve() in algorithms/simulated_annealing.py")
+        current_state = self.problem.generate_initial_state()
+        current_cost = self.problem.evaluate(current_state)
+
+        best_state = current_state
+        best_cost = current_cost
+
+        temp = self.initial_temp
+
+        for _ in range(self.max_iterations):
+            self.history.append(best_cost)
+
+            if temp <= self.min_temp:
+                break
+
+            neighbors = get_neighbors(current_state, self.problem)
+            if not neighbors:
+                break
+
+            # Pick a random neighbor
+            candidate = random.choice(neighbors)
+            candidate_cost = self.problem.evaluate(candidate)
+
+            delta_e = candidate_cost - current_cost
+
+            # Accept if it improves, or accept probabilistically if worse (Metropolis criterion)
+            if delta_e < 0:
+                current_state = candidate
+                current_cost = candidate_cost
+                if current_cost < best_cost:
+                    best_cost = current_cost
+                    best_state = current_state
+            else:
+                acceptance_prob = math.exp(-delta_e / temp)
+                if random.random() < acceptance_prob:
+                    current_state = candidate
+                    current_cost = candidate_cost
+
+            temp *= self.cooling_rate
+
+        return best_state, best_cost
