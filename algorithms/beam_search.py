@@ -33,55 +33,57 @@ class LocalBeamSearchSolver(LocalSearchSolver):
         Prohibited:
         - Treating this as K independent, non-communicating searches.
         """
-        beam = []
         time_domain = self.problem.get_valid_time_domain()
         base = self.problem.generate_initial_state()
-        beam.append(base)
 
+        # Initialize beam with diverse departure times
+        beam = [base]
         while len(beam) < self.beam_width:
-            t = random.choice(time_domain)
-            st = State(path=base.path, departure_time=t)
-            beam.append(st)
+            rand_time = random.choice(time_domain)
+            cand = State(path=base.path, departure_time=rand_time)
+            if self.problem.is_valid_state(cand) and cand not in beam:
+                beam.append(cand)
+            elif len(beam) < self.beam_width:
+                beam.append(base)
 
-        best_overall_state = base
-        best_overall_cost = self.problem.evaluate(base)
+        best_state = base
+        best_cost = self.problem.evaluate(base)
+
+        stagnant_steps = 0
 
         for _ in range(self.max_iterations):
-            # Find best state in current beam
-            for state in beam:
-                cost = self.problem.evaluate(state)
-                if cost < best_overall_cost:
-                    best_overall_cost = cost
-                    best_overall_state = state
+            # Find best state in the current beam
+            current_best = min(beam, key=lambda s: self.problem.evaluate(s))
+            current_best_cost = self.problem.evaluate(current_best)
 
-            self.history.append(best_overall_cost)
+            if current_best_cost < best_cost:
+                best_cost = current_best_cost
+                best_state = current_best
+                stagnant_steps = 0
+            else:
+                stagnant_steps += 1
 
-            next_beam = []
-            improved_any = False
+            self.history.append(best_cost)
 
-            for state in beam:
-                current_cost = self.problem.evaluate(state)
-                neighbors = get_neighbors(state, self.problem)
-                if not neighbors:
-                    next_beam.append(state)
-                    continue
-
-                best_nbr = None
-                best_nbr_cost = float("inf")
-                for nbr in neighbors:
-                    c = self.problem.evaluate(nbr)
-                    if c < best_nbr_cost:
-                        best_nbr_cost = c
-                        best_nbr = nbr
-
-                if best_nbr_cost < current_cost:
-                    next_beam.append(best_nbr)
-                    improved_any = True
-                else:
-                    next_beam.append(state)
-
-            beam = next_beam
-            if not improved_any:
+            # Stop if beam makes no improvement for 15 consecutive iterations
+            if stagnant_steps >= 15:
                 break
 
-        return best_overall_state, best_overall_cost
+            # Collect neighbors from all beam states
+            pool = []
+            seen = set()
+
+            for state in beam:
+                for nbr in get_neighbors(state, self.problem):
+                    if nbr not in seen:
+                        seen.add(nbr)
+                        pool.append((nbr, self.problem.evaluate(nbr)))
+
+            if not pool:
+                break
+
+            # Retain top K states across the entire pool
+            pool.sort(key=lambda x: x[1])
+            beam = [item[0] for item in pool[:self.beam_width]]
+
+        return best_state, best_cost

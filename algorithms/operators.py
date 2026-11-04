@@ -118,11 +118,17 @@ def crossover(parent1: State, parent2: State, problem: CommuteProblem) -> State:
         idx1 = parent1.path.index(junction)
         idx2 = parent2.path.index(junction)
 
-        # Splice parent 1 head with parent 2 tail
-        cand_path = parent1.path[:idx1] + parent2.path[idx2:]
-        cand_state = State(path=cand_path, departure_time=child_time)
-        if problem.is_valid_state(cand_state):
-            return cand_state
+        # Try direction 1: parent1 prefix + parent2 suffix
+        cand1 = parent1.path[:idx1] + parent2.path[idx2:]
+        state1 = State(path=cand1, departure_time=child_time)
+        if problem.is_valid_state(state1):
+            return state1
+
+        # Try direction 2: parent2 prefix + parent1 suffix
+        cand2 = parent2.path[:idx2] + parent1.path[idx1:]
+        state2 = State(path=cand2, departure_time=child_time)
+        if problem.is_valid_state(state2):
+            return state2
 
     # Fallback if no valid spliced route was found
     chosen_path = parent1.path if random.random() < 0.5 else parent2.path

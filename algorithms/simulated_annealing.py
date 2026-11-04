@@ -42,7 +42,8 @@ class SimulatedAnnealingSolver(LocalSearchSolver):
         temp = self.initial_temp
 
         for _ in range(self.max_iterations):
-            self.history.append(best_cost)
+            # Record current state cost to capture temperature jumps in the history plot
+            self.history.append(current_cost)
 
             if temp <= self.min_temp:
                 break
@@ -51,22 +52,22 @@ class SimulatedAnnealingSolver(LocalSearchSolver):
             if not neighbors:
                 break
 
-            # Pick a random neighbor
             candidate = random.choice(neighbors)
             candidate_cost = self.problem.evaluate(candidate)
 
             delta_e = candidate_cost - current_cost
 
-            # Accept if it improves, or accept probabilistically if worse (Metropolis criterion)
+            # Downhill move: always accept
             if delta_e < 0:
                 current_state = candidate
                 current_cost = candidate_cost
                 if current_cost < best_cost:
                     best_cost = current_cost
                     best_state = current_state
+            # Uphill move: accept probabilistically (Metropolis)
             else:
-                acceptance_prob = math.exp(-delta_e / temp)
-                if random.random() < acceptance_prob:
+                prob = math.exp(-delta_e / temp)
+                if random.random() < prob:
                     current_state = candidate
                     current_cost = candidate_cost
 
