@@ -2,7 +2,7 @@
 algorithms/operators.py
 Defines candidate neighborhood generation and genetic recombination operators.
 """
-
+import random
 from typing import List
 from core.state import State
 from core.problem import CommuteProblem
