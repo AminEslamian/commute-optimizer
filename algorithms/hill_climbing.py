@@ -2,7 +2,7 @@
 algorithms/hill_climbing.py
 Hill Climbing search with sideways move limits and random restarts.
 """
-
+import random
 from typing import Tuple
 from algorithms.base import LocalSearchSolver
 from core.state import State
