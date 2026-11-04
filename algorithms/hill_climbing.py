@@ -29,5 +29,63 @@ class HillClimbingSolver(LocalSearchSolver):
         Prohibited:
         - Looping indefinitely on flat plateaus.
         """
-        # TODO: Implement Hill Climbing with sideways moves and restarts
-        raise NotImplementedError("Implement solve() in algorithms/hill_climbing.py")
+        best_state = None
+        best_cost = float("inf")
+        time_domain = self.problem.get_valid_time_domain()
+
+        for restart in range(self.max_restarts + 1):
+            # First run starts at the base Dijkstra state; restarts pick a random valid time
+            if restart == 0:
+                current_state = self.problem.generate_initial_state()
+            else:
+                base = self.problem.generate_initial_state()
+                current_state = State(path=base.path, departure_time=random.choice(time_domain))
+                # Apply a couple random neighbor moves to diverge from the base route
+                for _ in range(random.randint(1, 4)):
+                    nbrs = get_neighbors(current_state, self.problem)
+                    if nbrs:
+                        current_state = random.choice(nbrs)
+
+            current_cost = self.problem.evaluate(current_state)
+
+            if current_cost < best_cost:
+                best_cost = current_cost
+                best_state = current_state
+
+            sideways_moves = 0
+
+            while True:
+                self.history.append(best_cost)
+
+                neighbors = get_neighbors(current_state, self.problem)
+                if not neighbors:
+                    break
+
+                # Steepest descent: find the neighbor with minimum travel time
+                best_nbr = None
+                best_nbr_cost = float("inf")
+                for nbr in neighbors:
+                    cost = self.problem.evaluate(nbr)
+                    if cost < best_nbr_cost:
+                        best_nbr_cost = cost
+                        best_nbr = nbr
+
+                # Better neighbor found
+                if best_nbr_cost < current_cost:
+                    current_state = best_nbr
+                    current_cost = best_nbr_cost
+                    sideways_moves = 0
+
+                    if current_cost < best_cost:
+                        best_cost = current_cost
+                        best_state = current_state
+
+                # Sideways move on a plateau
+                elif best_nbr_cost == current_cost and sideways_moves < self.max_sideways:
+                    current_state = best_nbr
+                    sideways_moves += 1
+
+                else:
+                    break
+
+        return best_state, best_cost
