@@ -38,8 +38,44 @@ def get_neighbors(state: State, problem: CommuteProblem) -> List[State]:
     Returns:
         List[State]: A list of valid neighboring State objects.
     """
-    # TODO: Implement neighborhood generation
-    raise NotImplementedError("Implement get_neighbors in algorithms/operators.py")
+    neighbors = []
+    seen = set()
+
+    # 1. Perturb departure time by -t_step and +t_step
+    for dt in [-problem.t_step, problem.t_step]:
+        new_time = round(state.departure_time + dt, 2)
+        if problem.t_min <= new_time <= problem.t_max:
+            cand = State(path=state.path, departure_time=new_time)
+            if cand not in seen and problem.is_valid_state(cand):
+                seen.add(cand)
+                neighbors.append(cand)
+
+    # 2. Local path modifications (shortcuts and 1-hop detours)
+    path = list(state.path)
+    for i in range(len(path) - 1):
+        u = path[i]
+        for v in problem.network.get_neighbors(u):
+            # Shortcut: if neighbor v connects directly to a later point on the route
+            if v in path[i + 2:]:
+                target_idx = path.index(v)
+                new_path = tuple(path[:i + 1] + path[target_idx:])
+                cand = State(path=new_path, departure_time=state.departure_time)
+                if cand not in seen and problem.is_valid_state(cand):
+                    seen.add(cand)
+                    neighbors.append(cand)
+
+            # 1-step detour: step onto v and merge back into the path
+            elif v not in path:
+                for w in problem.network.get_neighbors(v):
+                    if w in path[i + 1:]:
+                        target_idx = path.index(w)
+                        new_path = tuple(path[:i + 1] + [v] + path[target_idx:])
+                        cand = State(path=new_path, departure_time=state.departure_time)
+                        if cand not in seen and problem.is_valid_state(cand):
+                            seen.add(cand)
+                            neighbors.append(cand)
+
+    return neighbors
 
 
 def crossover(parent1: State, parent2: State, problem: CommuteProblem) -> State:
@@ -66,5 +102,32 @@ def crossover(parent1: State, parent2: State, problem: CommuteProblem) -> State:
     Returns:
         State: A newly generated child State.
     """
-    # TODO: Implement genetic crossover
-    raise NotImplementedError("Implement crossover in algorithms/operators.py")
+   # Average the departure times and snap to the nearest valid step
+    avg_time = (parent1.departure_time + parent2.departure_time) / 2.0
+    steps = round((avg_time - problem.t_min) / problem.t_step)
+    child_time = round(problem.t_min + steps * problem.t_step, 2)
+    child_time = max(problem.t_min, min(problem.t_max, child_time))
+
+    # Look for intermediate nodes shared by both parent routes
+    p1_mid = set(parent1.path[1:-1])
+    p2_mid = set(parent2.path[1:-1])
+    common = list(p1_mid.intersection(p2_mid))
+
+    if common:
+        junction = random.choice(common)
+        idx1 = parent1.path.index(junction)
+        idx2 = parent2.path.index(junction)
+
+        # Splice parent 1 head with parent 2 tail
+        cand_path = parent1.path[:idx1] + parent2.path[idx2:]
+        cand_state = State(path=cand_path, departure_time=child_time)
+        if problem.is_valid_state(cand_state):
+            return cand_state
+
+    # Fallback if no valid spliced route was found
+    chosen_path = parent1.path if random.random() < 0.5 else parent2.path
+    fallback_state = State(path=chosen_path, departure_time=child_time)
+    if problem.is_valid_state(fallback_state):
+        return fallback_state
+
+    return parent1
