@@ -35,7 +35,7 @@ Leaving at 08:45 makes sense in real-life senario because 08:45 is the end of th
 
 ## 3. Convergence Analysis
 
-![alt text](convergence_comparison.png)
+![convergence_comparison.png]
 - **Hill Climbing:** Drops fast in the first 10–15 steps. Sideways moves help it move across flat areas, and random restarts help it try different start points.
 - **Simulated Annealing:** At the start when temperature is high, it accepts worse costs and jumps around to avoid local minima. As it cools down, it stabilizes at the global minimum.
 - **Local Beam Search (Blue):** Appears almost invisible on the plot because it converges in only ~5 to 10 steps. On an x-axis stretched to 1500 iterations by Simulated Annealing, a 10-step search is compressed into a 2-pixel vertical drop at x=0 and is visually covered by the Genetic Algorithm and Hill Climbing lines. Because the benchmark network has only 7 nodes, maintaining a beam of K=8 states explores nearly the entire combinatorial path space within the first 2–3 iterations.
